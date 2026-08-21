@@ -254,14 +254,6 @@ table.cap.hide-b th.unit.b,table.cap.hide-b td.v.b{display:none}
 .notes code{font-family:var(--mono);font-size:12px;background:rgba(168,80,10,.10);padding:1px 4px;border-radius:3px}
 .foot{max-width:1560px;margin:0 auto;padding:0 24px 40px;font-size:12px;color:var(--ink-3)}
 
-/* ---------- URL-driven embedding ---------- */
-body.no-rail .shell{grid-template-columns:minmax(0,1fr)}
-body.embed{background:transparent}
-body.embed .shell{padding:0;max-width:none}
-body.embed .toolbar-inner{max-width:none;padding-left:0;padding-right:0}
-body.embed .block:last-of-type{margin-bottom:0}
-body.bare .block{border-radius:0;border-left:0;border-right:0;box-shadow:none}
-
 /* ---------- responsive ---------- */
 @media (max-width:1080px){
   .shell{grid-template-columns:minmax(0,1fr);gap:14px}
@@ -324,11 +316,11 @@ body.bare .block{border-radius:0;border-left:0;border-right:0;box-shadow:none}
 
 <div class="toolbar">
   <div class="toolbar-inner">
-    <div class="tgroup" data-part="search">
+    <div class="tgroup">
       <label class="eyebrow" for="q">Find</label>
       <input id="q" class="search" type="search" placeholder="ICC or compressor model" autocomplete="off">
     </div>
-    <div class="tgroup" data-part="units">
+    <div class="tgroup">
       <span class="eyebrow">Show</span>
       <div class="seg" id="unitSeg" role="group" aria-label="Capacity units">
         <button type="button" data-unit="both" aria-pressed="true">Both</button>
@@ -336,20 +328,20 @@ body.bare .block{border-radius:0;border-left:0;border-right:0;box-shadow:none}
         <button type="button" data-unit="w" aria-pressed="false">Watts</button>
       </div>
     </div>
-    <div class="tgroup" data-part="values">
+    <div class="tgroup">
       <span class="eyebrow">Values</span>
       <div class="seg" id="modeSeg" role="group" aria-label="Value display">
         <button type="button" data-mode="value" aria-pressed="true">Rated</button>
         <button type="button" data-mode="delta" aria-pressed="false">&Delta; vs R404A</button>
       </div>
     </div>
-    <div class="tgroup" data-part="shading">
+    <div class="tgroup">
       <div class="seg" role="group" aria-label="Capacity shading">
         <button type="button" id="shadeBtn" aria-pressed="true">Capacity shading</button>
       </div>
     </div>
-    <button type="button" class="btn" id="csvBtn" data-part="csv">Download CSV</button>
-    <button type="button" class="btn" id="printBtn" data-part="print">Print</button>
+    <button type="button" class="btn" id="csvBtn">Download CSV</button>
+    <button type="button" class="btn" id="printBtn">Print</button>
     <p class="readout" id="readout" aria-live="polite"></p>
   </div>
 </div>
@@ -392,28 +384,6 @@ const CONFIG = {
      confirmed and the owning brand has been decided. */
   eyebrow: "Condensing unit capacity reference",
 
-  /* Named parts that ?hide= and ?show= understand. Any other token is read as
-     a class name, so ?hide=ref-icc works too, as does ?hide=.ref-icc or #foot. */
-  parts: {
-    masthead:    ".masthead",
-    provisional: ".provisional",
-    toolbar:     ".toolbar",
-    rail:        ".rail",
-    search:      '[data-part="search"]',
-    units:       '[data-part="units"]',
-    values:      '[data-part="values"]',
-    shading:     '[data-part="shading"]',
-    csv:         '[data-part="csv"]',
-    print:       '[data-part="print"]',
-    readout:     ".readout",
-    header:      ".model-head",
-    facts:       ".mh-facts",
-    notes:       ".notes",
-    legend:      ".legend",
-    footer:      ".foot",
-    blockhead:   ".block-head"
-  },
-
   /* Footer note. */
   footNote: "Capacities are manufacturer-rated values transcribed from the source workbook. " +
             "Blocks flagged as not released or reference only are shown for comparison and must not be quoted as published ratings."
@@ -428,7 +398,6 @@ const state = {
   unit: "both",     // both | btu | w
   mode: "value",    // value | delta
   shade: CONFIG.shadingOn,
-  refs: [],
   filter: ""
 };
 
@@ -442,124 +411,6 @@ const el = (tag, cls, txt) => {
 };
 const nf = new Intl.NumberFormat("en-CA");
 const fmtT = v => String(v).replace("-", "\u2212");
-
-/* ============================================================
-   URL PARAMETERS
-   ------------------------------------------------------------
-   Everything the page shows can be driven from the query string, so one
-   deployed file can serve several different iframe embeds.
-
-     ?hide=masthead,provisional     hide named parts, or any class name
-     ?show=header,legend            hide everything hideable except these
-     ?embed=1                       preset: no masthead, rail, or footer,
-                                    padding collapsed for an iframe
-     ?bare=1                        also strip block borders and radius
-     ?model=NT6226GK                open a model (accepts the ICC number too)
-     ?ref=R404A,R507                show only these refrigerant blocks
-     ?unit=btu|w|both               which columns
-     ?mode=delta|value              rated numbers or delta vs baseline
-     ?shade=0|1                     capacity shading
-     ?height=1                      post height to the parent frame
-
-   Hiding is done with injected CSS rather than by removing nodes, so it
-   survives the re-render that happens on every model switch.
-   ============================================================ */
-const params = new URLSearchParams(location.search);
-
-/* Turn a token into a selector. Named parts win; otherwise it is read as a
-   class name, and a leading . or # is respected. Anything with characters
-   that do not belong in a selector is dropped rather than injected. */
-function partSelector(token){
-  const t = String(token).trim();
-  if (!t) return null;
-  if (CONFIG.parts[t]) return CONFIG.parts[t];
-  if (!/^[.#]?[A-Za-z][\w-]*$/.test(t)) return null;
-  return /^[.#]/.test(t) ? t : "." + t;
-}
-
-function tokens(name){
-  const raw = params.get(name);
-  return raw ? raw.split(",").map(s => s.trim()).filter(Boolean) : [];
-}
-
-function applyUrlChrome(){
-  const hide = new Set();
-
-  if (params.get("embed") === "1" || params.get("embed") === "true"){
-    ["masthead", "rail", "footer"].forEach(p => hide.add(p));
-    document.body.classList.add("embed");
-  }
-  if (params.get("bare") === "1") document.body.classList.add("bare");
-
-  tokens("hide").forEach(t => hide.add(t));
-
-  /* ?show= is the inverse: keep the listed parts, hide the other named ones.
-     It only ever touches names in CONFIG.parts, so page content is safe. */
-  const keep = tokens("show");
-  if (keep.length){
-    const kept = new Set(keep);
-    Object.keys(CONFIG.parts).forEach(p => { if (!kept.has(p)) hide.add(p); });
-    kept.forEach(p => hide.delete(p));
-  }
-
-  if (!hide.size) return;
-
-  const sels = Array.from(hide).map(partSelector).filter(Boolean);
-  if (!sels.length) return;
-
-  const style = document.createElement("style");
-  style.textContent = sels.join(",") + "{display:none !important}";
-  document.head.appendChild(style);
-
-  if (hide.has("rail")) document.body.classList.add("no-rail");
-}
-
-/* Content-level parameters, read once at boot. */
-function applyUrlState(){
-  const unit = (params.get("unit") || "").toLowerCase();
-  if (["both", "btu", "w"].includes(unit)){
-    state.unit = unit;
-    $$("#unitSeg button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.unit === unit)));
-  }
-
-  const mode = (params.get("mode") || "").toLowerCase();
-  if (["value", "delta"].includes(mode)){
-    state.mode = mode;
-    $$("#modeSeg button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.mode === mode)));
-  }
-
-  const shade = params.get("shade");
-  if (shade !== null){
-    state.shade = !(shade === "0" || shade === "false");
-    $("#shadeBtn").setAttribute("aria-pressed", String(state.shade));
-  }
-
-  state.refs = tokens("ref").map(r => r.toUpperCase());
-
-  /* ?model= matches the compressor model or any ICC model on the sheet. */
-  const want = (params.get("model") || "").trim().toUpperCase();
-  if (want){
-    const i = state.data.sheets.findIndex(s =>
-      s.compressorModel.toUpperCase() === want ||
-      s.iccModels.some(m => m.toUpperCase() === want));
-    if (i > -1) state.sheetIndex = i;
-  }
-}
-
-/* Report height to the parent frame so an iframe can size itself.
-   Parent side:
-     window.addEventListener("message", e => {
-       if (e.data && e.data.type === "capacity-tables:height")
-         iframe.style.height = e.data.height + "px";
-     }); */
-function reportHeight(){
-  if (params.get("height") !== "1" || window.parent === window) return;
-  const post = () => window.parent.postMessage(
-    { type: "capacity-tables:height", height: document.documentElement.scrollHeight }, "*");
-  new ResizeObserver(post).observe(document.body);
-  window.addEventListener("load", post);
-  post();
-}
 
 /* ============================================================
    BOOT
@@ -597,16 +448,11 @@ function reportHeight(){
     $("#provisional").hidden = false;
   }
 
-  applyUrlChrome();
   bindToolbar();
-
   const fromHash = d.sheets.findIndex(s => s.name === location.hash.replace(/^#/, ""));
   if (fromHash > -1) state.sheetIndex = fromHash;
-  applyUrlState();
-
   renderRail();
   renderSheet();
-  reportHeight();
 
   window.addEventListener("hashchange", () => {
     const i = state.data.sheets.findIndex(s => s.name === location.hash.replace(/^#/, ""));
@@ -712,36 +558,19 @@ function renderSheet(){
   const facts = el("div", "mh-facts");
   const rows = s.blocks[0].rows;
   addFact(facts, "Application", s.application);
-  const factRefs = state.refs.length
-    ? s.blocks.filter(b => state.refs.includes(b.refrigerant.toUpperCase()))
-    : s.blocks;
-  addFact(facts, "Refrigerants", (factRefs.length ? factRefs : s.blocks).map(b => b.refrigerant).join(", "));
+  addFact(facts, "Refrigerants", s.blocks.map(b => b.refrigerant).join(", "));
   addFact(facts, "Suction range", fmtT(rows[rows.length - 1].f) + "\u2009\u2013\u2009" + fmtT(rows[0].f) + " \u00B0F");
   addFact(facts, "Condensing range", fmtT(s.condensing[0].f) + "\u2009\u2013\u2009" + fmtT(s.condensing[s.condensing.length - 1].f) + " \u00B0F");
   head.appendChild(facts);
   main.appendChild(head);
 
-  /* baseline for delta mode — always the full set, so ?ref= narrowing the
-     visible blocks never changes what the percentages are measured against */
+  /* baseline for delta mode */
   const base = s.blocks.find(b => b.refrigerant === CONFIG.baselineRefrigerant) || s.blocks[0];
 
   const notes = renderNotes(s);
   if (notes) main.appendChild(notes);
 
-  const shown = state.refs.length
-    ? s.blocks.filter(b => state.refs.includes(b.refrigerant.toUpperCase()))
-    : s.blocks;
-
-  if (!shown.length){
-    const box = el("div", "legend");
-    box.appendChild(el("h3", null, "Nothing to show"));
-    box.appendChild(el("p", null,
-      "No refrigerant on this model matches \u201C" + state.refs.join(", ") +
-      "\u201D. Available: " + s.blocks.map(b => b.refrigerant).join(", ") + "."));
-    main.appendChild(box);
-  }
-
-  shown.forEach(b => main.appendChild(renderBlock(s, b, base)));
+  s.blocks.forEach(b => main.appendChild(renderBlock(s, b, base)));
 
   /* legend */
   main.appendChild(renderLegend());
