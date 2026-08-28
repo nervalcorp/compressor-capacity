@@ -70,8 +70,8 @@ tab has not been uploaded. Replace with a direct extraction when it is.
 
 | Sheet | Staged | Arithmetic check |
 |---|---|---|
-| YSF60E7G (SUOF3000) | 2026-08-28, `extra-sheets/YSF60E7G.json` | All 126 BTU/Watt pairs match ×0.29307 to within 0.006%; capacity monotonic on both axes. |
-| YSF75E7G (SUOF4000) | 2026-08-28, `extra-sheets/YSF75E7G.json` | 125 of 126 BTU/Watt pairs match ×0.29307 to within 0.006%; capacity monotonic on both axes. One cell unreadable — see below. |
+| YSF60E7G (SUOF3000) | 2026-08-28, `extra-sheets/YSF60E7G.json` | All 126 BTU/Watt pairs reconcile exactly under ÷3.412; capacity monotonic on both axes. |
+| YSF75E7G (SUOF4000) | 2026-08-28, `extra-sheets/YSF75E7G.json` | All 126 BTU/Watt pairs reconcile exactly under ÷3.412; capacity monotonic on both axes. |
 
 ## Pinned for the InvoTech cross-check
 
@@ -83,10 +83,16 @@ available.
 
 | Sheet | Issue |
 |---|---|
-| YSF75E7G | BTU/H at 30 °F suction / 80 °F condensing is column-overflowed (`#####`) in the source, in both the R404A and R507 blocks. Watts of 29,931 bounds it to 102,128–102,130. **Needs the exact figure from the workbook.** |
 | YSF75E7G | R404A frequency-scaled from 50 Hz, same as SUOF3000. |
 | YSF60E7G | R404A is published at 50 Hz and frequency-scaled on this sheet. Every other model's R404A block is published data at the rated frequency. Confirm the scaling factor. |
 | YF13E3G | SUIF2000 / SUOF2000 sit with MBIF600. Every other sheet shares one suffix across its ICC models, and the number otherwise tracks capacity — here 2000 is on the second-smallest freezer (11,935 BTU/H at 5/90), below SUIF1000 (16,692) and SUIF1500 (24,280). |
+
+## Conversion factor
+
+The workbook converts capacity to power as **BTU/H ÷ 3.412**, not
+BTU/H × 0.29307. `round(btu / 3.412) == watts` holds for all 4,345 rated pairs
+in the dataset; 0.29307 misses roughly 650 of them by one watt. Use 3.412 for
+any reconciliation against this data.
 
 ## Open questions
 
@@ -127,7 +133,8 @@ None of these are errors as such — they may be exactly as intended.
 | Date | Change |
 |---|---|
 | 2026-08-24 | Added SUOF1000 to YF20E3G and SUOF1500 to YF29E3G via `ICC_MODEL_ADDITIONS`. No capacity values changed. |
-| 2026-08-28 | Added YSF75E7G / SUOF4000. 17 sheets, 5,355 rated points, one cell outstanding. |
+| 2026-08-28 | Filled the overflowed YSF75E7G cell with 102,125 from the corrected workbook. No outstanding anomalies. Established that the workbook converts with ÷3.412. |
+| 2026-08-28 | Added YSF75E7G / SUOF4000. 17 sheets, 5,355 rated points. |
 | 2026-08-28 | Added YSF60E7G / SUOF3000 via the new `extra-sheets/` route. Numbers stored as text are now coerced silently instead of being flagged. 16 sheets, 5,040 rated points. |
 | 2026-08-27 | Added SUIF2000 and SUOF2000 to YF13E3G from the ERP, with a pinned review note on the numbering. Added `SHEET_NOTES` mechanism. No capacity values changed. |
 | 2026-08-27 | Added SUIF1000 to YF20E3G and SUIF1500 to YF29E3G. No capacity values changed. Live at https://nervalcorp.github.io/compressor-capacity/ |
