@@ -38,6 +38,8 @@ the manufacturer.
 | YF13E3G | MBIF600, SUIF2000, SUOF2000 | Low temp | ⬜ |
 | YF20E3G | MBIF1000, SUIF1000, SUOF1000 | Low temp | ⬜ |
 | YF29E3G | MBIF1500, SUIF1500, SUOF1500 | Low temp | ⬜ |
+| YSF60E7G | SUOF3000 | Low temp | ⬜ |
+| YSF75E7G | SUOF4000 | Low temp | ⬜ |
 
 ## Corrections applied
 
@@ -61,6 +63,16 @@ the source spreadsheet's model column and are shown on the page with a note.
 
 Remove the entry once the workbook itself carries the number.
 
+## Sheets staged outside the .xlsx
+
+Same workbook as everything else, held as JSON only because the file with that
+tab has not been uploaded. Replace with a direct extraction when it is.
+
+| Sheet | Staged | Arithmetic check |
+|---|---|---|
+| YSF60E7G (SUOF3000) | 2026-08-28, `extra-sheets/YSF60E7G.json` | All 126 BTU/Watt pairs match ×0.29307 to within 0.006%; capacity monotonic on both axes. |
+| YSF75E7G (SUOF4000) | 2026-08-28, `extra-sheets/YSF75E7G.json` | 125 of 126 BTU/Watt pairs match ×0.29307 to within 0.006%; capacity monotonic on both axes. One cell unreadable — see below. |
+
 ## Pinned for the InvoTech cross-check
 
 Held in `SHEET_NOTES` in `scripts/extract.py` and shown on the affected model's
@@ -71,6 +83,9 @@ available.
 
 | Sheet | Issue |
 |---|---|
+| YSF75E7G | BTU/H at 30 °F suction / 80 °F condensing is column-overflowed (`#####`) in the source, in both the R404A and R507 blocks. Watts of 29,931 bounds it to 102,128–102,130. **Needs the exact figure from the workbook.** |
+| YSF75E7G | R404A frequency-scaled from 50 Hz, same as SUOF3000. |
+| YSF60E7G | R404A is published at 50 Hz and frequency-scaled on this sheet. Every other model's R404A block is published data at the rated frequency. Confirm the scaling factor. |
 | YF13E3G | SUIF2000 / SUOF2000 sit with MBIF600. Every other sheet shares one suffix across its ICC models, and the number otherwise tracks capacity — here 2000 is on the second-smallest freezer (11,935 BTU/H at 5/90), below SUIF1000 (16,692) and SUIF1500 (24,280). |
 
 ## Open questions
@@ -112,6 +127,8 @@ None of these are errors as such — they may be exactly as intended.
 | Date | Change |
 |---|---|
 | 2026-08-24 | Added SUOF1000 to YF20E3G and SUOF1500 to YF29E3G via `ICC_MODEL_ADDITIONS`. No capacity values changed. |
+| 2026-08-28 | Added YSF75E7G / SUOF4000. 17 sheets, 5,355 rated points, one cell outstanding. |
+| 2026-08-28 | Added YSF60E7G / SUOF3000 via the new `extra-sheets/` route. Numbers stored as text are now coerced silently instead of being flagged. 16 sheets, 5,040 rated points. |
 | 2026-08-27 | Added SUIF2000 and SUOF2000 to YF13E3G from the ERP, with a pinned review note on the numbering. Added `SHEET_NOTES` mechanism. No capacity values changed. |
 | 2026-08-27 | Added SUIF1000 to YF20E3G and SUIF1500 to YF29E3G. No capacity values changed. Live at https://nervalcorp.github.io/compressor-capacity/ |
 | 2026-08-20 | Initial extraction from `_CLEAN__Condensing_Units_and_Evaps_-_Keeprite_for_comparison.xlsx`. 15 models, 5 refrigerants each, 4,725 rated points, 2,020 not-rated cells. One transcription error found and corrected. Page built and fidelity-checked at 9,450 cells. |
