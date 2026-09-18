@@ -370,7 +370,7 @@ body.bare .block{border-radius:0;border-left:0;border-right:0;box-shadow:none}
 
 <div class="toolbar">
   <div class="toolbar-inner">
-    <div class="tgroup" data-part="view">
+    <div class="tgroup view-uc" data-part="view">
       <span class="eyebrow">View</span>
       <div class="seg" id="viewSeg" role="group" aria-label="View">
         <button type="button" data-view="units" aria-pressed="true">Units</button>
@@ -452,6 +452,7 @@ const CONFIG = {
     provisional: ".provisional",
     toolbar:     ".toolbar",
     rail:        ".rail",
+    view:        '[data-part="view"]',
     search:      '[data-part="search"]',
     units:       '[data-part="units"]',
     values:      '[data-part="values"]',
